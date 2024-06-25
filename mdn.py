@@ -7,8 +7,12 @@ import torch.distributions.normal as normal
 class SimpleNN(nn.Module):
     def __init__(self) -> None:
         super(SimpleNN, self).__init__()
-        self.fc1 = nn.Linear(1, 20)
-        self.fc2 = nn.Linear(20, 1)
+        self.in_features = 1
+        self.num_hidden_units = 20
+        self.out_features = 1
+
+        self.fc1 = nn.Linear(self.in_features, self.num_hidden_units)
+        self.fc2 = nn.Linear(self.num_hidden_units, self.out_features)
 
     def forward(self, inp):
         inp = F.tanh(self.fc1(inp))
@@ -25,12 +29,13 @@ class MDN(nn.Module):
     def __init__(self) -> None:
         super(MDN, self).__init__()
         self.in_features = 1
+        self.num_hidden_units = 20
         self.num_gaussians = 3
 
         self.fc1 = nn.Linear(self.in_features, 20)
-        self.pi = nn.Linear(20, self.num_gaussians)
-        self.sigma = nn.Linear(20, self.num_gaussians)
-        self.mu = nn.Linear(20, self.num_gaussians)
+        self.pi = nn.Linear(self.num_hidden_units, self.num_gaussians)
+        self.sigma = nn.Linear(self.num_hidden_units, self.num_gaussians)
+        self.mu = nn.Linear(self.num_hidden_units, self.num_gaussians)
 
     def forward(self, inp):
         inp = F.tanh(self.fc1(inp))
@@ -80,7 +85,7 @@ def calc_loss(net, inp, out, target):
 
 
 def train(net, num_epochs, batch_size, optimizer, inp, target):
-    # shuffling is importtant
+    # shuffling is important
     perm_idx = torch.randperm(len(target))
     inp = inp[perm_idx]
     target = target[perm_idx]
@@ -105,7 +110,8 @@ def train(net, num_epochs, batch_size, optimizer, inp, target):
                 net,
                 inp,
                 net.forward(inp.view(-1, 1)),
-                target).detach().numpy()
+                target
+            ).detach().numpy()
         )
 
     return net, hist_loss
