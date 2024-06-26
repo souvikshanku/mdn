@@ -58,12 +58,12 @@ def _calc_simple_nn_loss(out, target):
     return loss
 
 
-def _calc_mdn_loss(mdn, inp, target):
-    out = mdn.forward(inp.view(-1, 1))
-
+def _calc_mdn_loss(mdn, out, target):
+    n = mdn.num_gaussians
     prob = 0  # not actually probability though
-    for i in range(3):
-        pi, sigma, mu = out[:, i], out[:, i+3], out[:, i+6]
+
+    for i in range(n):
+        pi, sigma, mu = out[:, i], out[:, i + n], out[:, i + 2*n]
         gaussian = normal.Normal(mu, sigma)
         phi = torch.exp(gaussian.log_prob(target.view(-1)))
         prob += pi * phi
@@ -73,11 +73,11 @@ def _calc_mdn_loss(mdn, inp, target):
     return loss
 
 
-def calc_loss(net, inp, out, target):
+def calc_loss(net, out, target):
     if isinstance(net, SimpleNN):
         loss = _calc_simple_nn_loss(out, target)
     elif isinstance(net, MDN):
-        loss = _calc_mdn_loss(net, inp, target)
+        loss = _calc_mdn_loss(net, out, target)
     else:
         raise NotImplementedError
 
@@ -101,14 +101,13 @@ def train(net, num_epochs, batch_size, optimizer, inp, target):
 
             optimizer.zero_grad()
             batch_out = net.forward(batch_inp)
-            loss = calc_loss(net, batch_inp, batch_out, batch_target)
+            loss = calc_loss(net, batch_out, batch_target)
             loss.backward()
             optimizer.step()
 
         hist_loss.append(
             calc_loss(
                 net,
-                inp,
                 net.forward(inp.view(-1, 1)),
                 target
             ).detach().numpy()
